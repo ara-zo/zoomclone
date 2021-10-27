@@ -1,5 +1,5 @@
 import http from "http";
-import WebSocket from "ws";
+import SocketIO from "socket.io";
 import express from "express";
 
 const app = express();
@@ -12,31 +12,40 @@ app.get("/*", (req, res) => res.redirect("/"));
 
 const handleListen = () => console.log("Listening on http://localhost:3000");
 
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+const httpServer = http.createServer(app);
+// io 서버 생성
+const wsServer = SocketIO(httpServer);
+
+wsServer.on("connection", (socket) => {
+    // app.js에서 받은 function
+    socket.on("enter_room", (msg, done) => {
+        console.log(msg);
+        // 10초후에 function실행
+        setTimeout(() => {
+            done()
+        }, 10000)
+    });
+});
+
 
 function onSocketClose() {
     console.log("Disconnected from the Browser")
 }
 
+/*
+const wss = new WebSocket.Server({ server });
 const sockets = [];
-
-// connection이 생기면 socket에서 누가 연결했는지 알 수 있음
-// 새로운 브라우저가 내 서버에 들어오면 실행됨
 wss.on("connection", (socket) => {
     sockets.push(socket);
     socket["nickname"] = "Anon";
     console.log("Connected to Browser");
 
-    // 브라우저 탭을 닫거나 컴퓨터가 잠자기 모드에 들어가면 이벤트 발생
     socket.on("close", onSocketClose);
 
-    // 특정 socket에서 메시지를 받았을때 발생
     socket.on("message", (msg) => {
         const message = JSON.parse(msg);
         console.log(socket.nickname);
         console.log(`message: ${message.type} ${message.payload}`);
-        // 모든 socket에 message를 보냄
         switch (message.type) {
             case "new_message" :
                 sockets.forEach((aSocket) => aSocket.send(`${socket.nickname}: ${message.payload}`));
@@ -47,5 +56,6 @@ wss.on("connection", (socket) => {
         }
     });
 });
+*/
 
-server.listen(3000, handleListen);
+httpServer.listen(3000, handleListen);
