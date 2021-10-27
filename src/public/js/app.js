@@ -1,13 +1,18 @@
+const messageList = document.querySelector("ul");
+const nickForm = document.querySelector("#nick");
+const messageForm = document.querySelector("#message");
 
 // backend와 connection 열어줌
 const socket = new WebSocket(`ws://${window.location.host}`);
 
-function handleOpen() {
-    console.log("Connected to Server");
+function makeMessage(type, payload) {
+    const msg = {type, payload};
+    console.log(msg);
+    return JSON.stringify(msg);
 }
 
-function handleMessage(message) {
-    console.log("New message : ", message.data);
+function handleOpen() {
+    console.log("Connected to Server");
 }
 
 function handleClose() {
@@ -18,13 +23,31 @@ function handleClose() {
 socket.addEventListener("open", handleOpen);
 
 // backend에서 message를 받았을때 실행
-socket.addEventListener("message", handleMessage);
+socket.addEventListener("message", (message) => {
+    const li = document.createElement("li");
+    li.innerText = message.data;
+    messageList.append(li);
+});
 
 // backend와의 연결이 끊겼을때 실행
 socket.addEventListener("close", handleClose);
 
-setTimeout(() => {
-    // frontend에서 backend로 message 보냄
-    // buffer로 보내짐 나중에 수정 예정
-    socket.send("hello from th browser!");
-}, 10000);
+function handleSubmit(event) {
+    event.preventDefault();
+    const input = messageForm.querySelector("input");
+    socket.send(makeMessage("new_message", input.value));
+    const li = document.createElement("li");
+    li.innerText = `You : ${input.value}`;
+    messageList.append(li);
+    input.value = "";
+}
+
+function handleNickSubmit(event) {
+    event.preventDefault();
+    const input = nickForm.querySelector("input");
+    socket.send(makeMessage("nickname", input.value));
+    input.value = "";
+}
+
+messageForm.addEventListener("submit", handleSubmit);
+nickForm.addEventListener("submit", handleNickSubmit);
