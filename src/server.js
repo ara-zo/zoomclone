@@ -17,14 +17,32 @@ const httpServer = http.createServer(app);
 const wsServer = SocketIO(httpServer);
 
 wsServer.on("connection", (socket) => {
-    // app.js에서 받은 function
-    socket.on("enter_room", (msg, done) => {
-        console.log(msg);
-        // 10초후에 function실행
-        setTimeout(() => {
-            done()
-        }, 10000)
+    socket["nickname"] = "Anon";
+
+    // middleware같은거
+    socket.onAny((event) => {
+        console.log(`Socket Event: ${event}`);
     });
+
+    // room 입장
+    socket.on("enter_room", (roomName, done) => {
+        socket.join(roomName);
+        done();
+        socket.to(roomName).emit("welcome", socket.nickname);
+    });
+
+    // 연결종료
+    socket.on("disconnecting", (reason) => {
+        socket.rooms.forEach((room) => socket.to(room).emit("bye", socket.nickname));
+    });
+
+    // message
+    socket.on("new_message", (msg, room, done) => {
+        socket.to(room).emit("new_message", `${socket.nickname} : ${msg}`);
+        done();
+    });
+
+    socket.on("nickname", (nickname) => (socket["nickname"] = nickname));
 });
 
 
