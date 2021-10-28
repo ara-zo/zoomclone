@@ -16,6 +16,22 @@ const httpServer = http.createServer(app);
 // io 서버 생성
 const wsServer = SocketIO(httpServer);
 
+function publicRooms() {
+    const {
+        sockets: {
+            adapter: {sids, rooms}
+        }
+    } = wsServer;
+    // public room list 생성
+    const publicRooms = [];
+    rooms.forEach((_, key) => {
+        if (sids.get(key) === undefined) {
+            publicRooms.push(key);
+        }
+    });
+    return publicRooms;
+}
+
 wsServer.on("connection", (socket) => {
     socket["nickname"] = "Anon";
 
@@ -29,12 +45,20 @@ wsServer.on("connection", (socket) => {
         socket.join(roomName);
         done();
         socket.to(roomName).emit("welcome", socket.nickname);
+        wsServer.sockets.emit("room_change", publicRooms());
     });
 
-    // 연결종료
+    // 연결종료 직전
+    // disconnecting event socket이 방을 떠나기 바로 직전에 발생
     socket.on("disconnecting", (reason) => {
         socket.rooms.forEach((room) => socket.to(room).emit("bye", socket.nickname));
+
     });
+
+    // 완전 연결종료
+    socket.on("disconnect", () => {
+        wsServer.sockets.emit("room_change", publicRooms());
+    })
 
     // message
     socket.on("new_message", (msg, room, done) => {
